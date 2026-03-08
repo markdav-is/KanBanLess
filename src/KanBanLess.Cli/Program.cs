@@ -275,6 +275,11 @@ void PrintColumn(string col, string? priorityFilter, string? tagFilter)
 
 string? FindTask(string slug)
 {
+    if (!Regex.IsMatch(slug, @"^[a-z0-9][a-z0-9\-]*$"))
+    {
+        Console.Error.WriteLine($"Error: invalid task slug '{slug}'. Slugs may only contain lowercase letters, digits, and hyphens.");
+        return null;
+    }
     foreach (var col in columns)
     {
         var path = Path.Combine(col, $"{slug}.md");
