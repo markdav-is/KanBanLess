@@ -154,56 +154,89 @@ MDEOF
     done
     if [[ -n "$column" ]]; then
       validate_column "$column" || exit 1
+      list_cols=("$column")
+    else
+      list_cols=("${COLUMNS[@]}")
     fi
-    python3 -c "
-import sys, os
-from pathlib import Path
 
-all_cols  = ['backlog', 'todo', 'doing', 'done']
-col_arg   = sys.argv[1]
-prio_f    = sys.argv[2] or None
-tag_f     = sys.argv[3] or None
-cols      = [col_arg] if col_arg else all_cols
-PRIO_ORD  = {'high': 0, 'medium': 1, 'low': 2}
-
-def read_frontmatter(path):
-    priority, tags = 'medium', []
-    lines = Path(path).read_text().splitlines()
-    in_fm, dashes = False, 0
-    for line in lines:
-        if line.strip() == '---':
-            dashes += 1
-            in_fm = dashes == 1
-            if dashes == 2: break
-            continue
-        if not in_fm: continue
-        if line.startswith('priority:'):
-            priority = line[len('priority:'):].strip().lower()
-        elif line.startswith('tags:'):
-            part = line[len('tags:'):].strip()
-            if part.startswith('[') and part.endswith(']'):
-                tags = [t.strip().lower() for t in part[1:-1].split(',') if t.strip()]
-    return priority, tags
-
-for col in cols:
-    print(f'## {col}')
-    if not os.path.isdir(col):
-        print('  (missing)')
+    for col in "${list_cols[@]}"; do
+      echo "## $col"
+      if [[ ! -d "$col" ]]; then
+        echo "  (missing)"
         continue
-    tasks = []
-    for f in sorted(Path(col).glob('*.md')):
-        prio, tags = read_frontmatter(f)
-        if prio_f and prio != prio_f: continue
-        if tag_f and tag_f not in tags: continue
-        tasks.append((prio, tags, f.stem))
-    if not tasks:
-        label = '(no matches)' if (prio_f or tag_f) else '(empty)'
-        print(f'  {label}')
-    else:
-        for prio, tags, slug in sorted(tasks, key=lambda x: (PRIO_ORD.get(x[0], 3), x[2])):
-            tag_str = ('  ' + ' '.join(f'#{t}' for t in tags)) if tags else ''
-            print(f'  - {slug}  [{prio}]{tag_str}')
-" "$column" "$priority_filter" "$tag_filter"
+      fi
+
+      sort_lines=()
+      shopt -s nullglob
+      for f in "$col"/*.md; do
+        # Parse frontmatter
+        fm_prio="medium" fm_tags="" fm_in=0 fm_dashes=0
+        while IFS= read -r fm_line; do
+          if [[ "$fm_line" == "---" ]]; then
+            (( ++fm_dashes ))
+            [[ $fm_dashes -eq 1 ]] && fm_in=1
+            [[ $fm_dashes -eq 2 ]] && break
+            continue
+          fi
+          [[ $fm_in -eq 1 ]] || continue
+          if [[ "$fm_line" =~ ^priority:[[:space:]]*(.*) ]]; then
+            fm_prio="${BASH_REMATCH[1]// /}"
+            fm_prio="${fm_prio,,}"
+          elif [[ "$fm_line" =~ ^tags:[[:space:]]*\[([^\]]*)\] ]]; then
+            fm_tags="${BASH_REMATCH[1]}"
+          fi
+        done < "$f"
+
+        # Filter by priority
+        [[ -n "$priority_filter" && "$fm_prio" != "$priority_filter" ]] && continue
+
+        # Filter by tag
+        if [[ -n "$tag_filter" ]]; then
+          tag_found=0
+          IFS=',' read -ra tag_arr <<< "$fm_tags"
+          for t in "${tag_arr[@]}"; do
+            t="${t// /}"; t="${t,,}"
+            [[ "$t" == "$tag_filter" ]] && { tag_found=1; break; }
+          done
+          [[ $tag_found -eq 0 ]] && continue
+        fi
+
+        slug=$(basename "$f" .md)
+
+        # Build tag display string
+        tag_str=""
+        if [[ -n "${fm_tags//[, ]/}" ]]; then
+          tag_display=""
+          IFS=',' read -ra tag_arr <<< "$fm_tags"
+          for t in "${tag_arr[@]}"; do
+            t="${t// /}"; t="${t,,}"
+            [[ -n "$t" ]] && tag_display+="#$t "
+          done
+          tag_str="  ${tag_display% }"
+        fi
+
+        # Priority sort key: high=0 medium=1 low=2 other=3
+        case "$fm_prio" in
+          high)   order=0 ;;
+          medium) order=1 ;;
+          low)    order=2 ;;
+          *)      order=3 ;;
+        esac
+
+        sort_lines+=("${order}|${slug}|${fm_prio}|${tag_str}")
+      done
+      shopt -u nullglob
+
+      if [[ ${#sort_lines[@]} -eq 0 ]]; then
+        [[ -n "$priority_filter" || -n "$tag_filter" ]] \
+          && echo "  (no matches)" || echo "  (empty)"
+      else
+        printf '%s\n' "${sort_lines[@]}" | sort | \
+          while IFS='|' read -r _ slug prio tag_str; do
+            echo "  - $slug  [$prio]$tag_str"
+          done
+      fi
+    done
     ;;
 
   show)
