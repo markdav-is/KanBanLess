@@ -102,7 +102,21 @@ int Move(string? task, string? column)
         Console.Error.WriteLine($"Error: column '{column}/' not found. Run 'kanban init' first.");
         return 1;
     }
-    File.Move(src, Path.Combine(column, $"{task}.md"));
+    var dest = Path.Combine(column, $"{task}.md");
+    if (File.Exists(dest))
+    {
+        Console.Error.WriteLine($"Error: task already exists in column '{column}': {dest}");
+        return 1;
+    }
+    try
+    {
+        File.Move(src, dest);
+    }
+    catch (IOException ex)
+    {
+        Console.Error.WriteLine($"Error: failed to move task '{task}' to column '{column}': {ex.Message}");
+        return 1;
+    }
     Console.WriteLine($"Moved: {task}  →  {column}");
     return 0;
 }
