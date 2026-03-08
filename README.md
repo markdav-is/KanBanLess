@@ -210,3 +210,11 @@ my-board/
 ## Future
 
 - **Blazor Hybrid GUI** — cross-platform desktop/mobile client (MAUI Blazor Hybrid) that reads/writes the same file system structure with drag-and-drop columns, works offline, no backend required
+
+---
+
+## Inspiration
+
+This project grew out of a conversation with [Piotr Jura](https://www.threads.com/@piotrjura) on Threads about using the file system as a Kanban board for AI agents. Thanks Piotr.
+
+[See the original post →](https://www.threads.com/@piotrjura/post/DVleHKbDBdy)
