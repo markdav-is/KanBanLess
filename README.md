@@ -13,51 +13,133 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 | Task | A `.md` file with YAML frontmatter and a markdown checklist |
 | Move | Moving a file between column directories |
 
+---
+
 ## Installation
 
-### .NET Global Tool (Windows, Linux, macOS)
+### Windows
 
-```
+**Option A — .NET global tool (recommended)**
+
+Requires [.NET 8 SDK or later](https://dotnet.microsoft.com/download).
+
+```powershell
 dotnet tool install -g KanBanLess.Cli
-kanban init
 ```
 
-### Bash script (Linux / macOS)
+`kanban` is then available in any terminal (PowerShell, CMD, Windows Terminal).
 
-The `kanban` bash script at the repo root requires no install — just run `./kanban <command>` from the project directory.
+**Option B — Git Bash / WSL**
 
-### No install (agents)
+If you have Git Bash or WSL installed, clone the repo and use the bash script directly:
 
-Agents can skip the CLI entirely and operate directly on the file system using their built-in file tools. The skill files describe exactly how.
+```bash
+git clone https://github.com/markdav-is/KanBanLess.git
+cd KanBanLess
+./kanban init
+```
+
+---
+
+### macOS
+
+**Option A — .NET global tool (recommended)**
+
+Install the .NET SDK via the [official installer](https://dotnet.microsoft.com/download) or Homebrew:
+
+```bash
+brew install dotnet
+dotnet tool install -g KanBanLess.Cli
+```
+
+Add the tools directory to your PATH if prompted:
+
+```bash
+export PATH="$PATH:$HOME/.dotnet/tools"   # add to ~/.zshrc or ~/.bash_profile
+```
+
+**Option B — Bash script (no .NET required)**
+
+```bash
+git clone https://github.com/markdav-is/KanBanLess.git
+cd KanBanLess
+./kanban init
+```
+
+---
+
+### Linux
+
+**Option A — .NET global tool (recommended)**
+
+Install the .NET SDK for your distro:
+
+```bash
+# Ubuntu / Debian
+sudo apt-get install -y dotnet-sdk-8.0
+
+# Fedora / RHEL
+sudo dnf install dotnet-sdk-8.0
+```
+
+Then install the tool:
+
+```bash
+dotnet tool install -g KanBanLess.Cli
+export PATH="$PATH:$HOME/.dotnet/tools"   # add to ~/.bashrc
+```
+
+**Option B — Bash script (no .NET required)**
+
+```bash
+git clone https://github.com/markdav-is/KanBanLess.git
+cd KanBanLess
+./kanban init
+```
+
+---
+
+### AI Agents (no install)
+
+Agents can skip the CLI entirely. The skill files instruct them to operate directly on the file system using their built-in file and directory tools — no binary, no shell required.
+
+| Agent | Skill file |
+|---|---|
+| Claude Code | `.claude/skills/kanbanless/SKILL.md` |
+| GitHub Copilot | `.github/skills/kanbanless/SKILL.md` |
+
+---
 
 ## Quick Start
 
 ```bash
-# Initialise a board (creates a kanban/ folder; use a name to customise)
+# Create a board (makes a kanban/ folder; pass a name to customise)
 kanban init
 kanban init "My Project"   # creates my-project/ (or my-project-1/ if taken)
 cd kanban
 
 # Add tasks
-./kanban add "Design the data model"
-./kanban add "Write unit tests"
-./kanban add "Set up CI pipeline"
+kanban add "Design the data model"
+kanban add "Write unit tests"
+kanban add "Set up CI pipeline"
 
 # Check the board
-./kanban status
-./kanban list
+kanban status
+kanban list
 
 # Move tasks through the workflow
-./kanban move design-the-data-model todo
-./kanban move design-the-data-model doing
-./kanban show design-the-data-model
+kanban move design-the-data-model todo
+kanban move design-the-data-model doing
+kanban show design-the-data-model
 
 # Check off work
-./kanban check design-the-data-model "Step one"
+kanban check design-the-data-model "Step one"
 
 # Complete
-./kanban move design-the-data-model done
+kanban move design-the-data-model done
 ```
+
+---
 
 ## Commands
 
@@ -70,6 +152,8 @@ cd kanban
 | `kanban show <task>` | Display a task's full content |
 | `kanban check <task> <item>` | Mark a checklist item complete |
 | `kanban status` | Show count per column |
+
+---
 
 ## Task File Format
 
@@ -92,11 +176,13 @@ Brief description of the task.
 - [ ] Step three
 ```
 
-Metadata derived from the filesystem (no duplication in frontmatter):
+Metadata is derived from the filesystem — nothing duplicated in frontmatter:
 
 - `id` — filename without `.md`
 - `created` — file `ctime`
 - `updated` — file `mtime`
+
+---
 
 ## Directory Structure
 
@@ -112,14 +198,7 @@ my-board/
     completed-task.md
 ```
 
-## Agent Skills
-
-KanBanLess ships skill definition files for AI coding agents:
-
-| Agent | Skill file |
-|---|---|
-| Claude Code | `.claude/skills/kanbanless/SKILL.md` |
-| GitHub Copilot | `.github/skills/kanbanless/SKILL.md` |
+---
 
 ## Principles
 
