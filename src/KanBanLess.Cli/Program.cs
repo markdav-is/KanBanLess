@@ -158,8 +158,13 @@ int Check(string? task, string item)
 
     if (content.Contains(unchecked_))
     {
-        File.WriteAllText(file, content.Replace(unchecked_, checked_));
-        Console.WriteLine($"Checked: \"{item}\" in {task}");
+        var index = content.IndexOf(unchecked_, StringComparison.Ordinal);
+        if (index >= 0)
+        {
+            var newContent = content[..index] + checked_ + content[(index + unchecked_.Length)..];
+            File.WriteAllText(file, newContent);
+            Console.WriteLine($"Checked: \"{item}\" in {task}");
+        }
     }
     else if (content.Contains(checked_))
     {
