@@ -18,7 +18,9 @@ Commands:
                           other commands.
   add <title>             Create a new task .md in backlog/
   move <task> <column>    Move a task file to a new column directory
-  list [column]           List tasks in one or all columns
+  list [column]           List tasks; sorted high→medium→low by default
+    [--priority high|medium|low]  Filter by priority
+    [--tag <tag>]                 Filter by tag
   show <task>             Display a task's content
   check <task> <item>     Mark a checklist item complete
   status                  Show board summary (count per column)
@@ -135,35 +137,68 @@ MDEOF
     ;;
 
   list)
-    column="${1:-}"
+    column=""
+    priority_filter=""
+    tag_filter=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --priority) priority_filter="${2:-}"; shift 2 ;;
+        --tag)      tag_filter="${2:-}";      shift 2 ;;
+        *)          column="$1";              shift   ;;
+      esac
+    done
     if [[ -n "$column" ]]; then
-      validate_column "$column"
-      echo "## $column"
-      shopt -s nullglob
-      files=("$column"/*.md)
-      shopt -u nullglob
-      if [[ ${#files[@]} -eq 0 ]]; then
-        echo "  (empty)"
-      else
-        for f in "${files[@]}"; do
-          echo "  - $(basename "$f" .md)"
-        done
-      fi
-    else
-      for col in "${COLUMNS[@]}"; do
-        echo "## $col"
-        shopt -s nullglob
-        files=("$col"/*.md)
-        shopt -u nullglob
-        if [[ ${#files[@]} -eq 0 ]]; then
-          echo "  (empty)"
-        else
-          for f in "${files[@]}"; do
-            echo "  - $(basename "$f" .md)"
-          done
-        fi
-      done
+      validate_column "$column" || exit 1
     fi
+    python3 -c "
+import sys, os
+from pathlib import Path
+
+all_cols  = ['backlog', 'todo', 'doing', 'done']
+col_arg   = sys.argv[1]
+prio_f    = sys.argv[2] or None
+tag_f     = sys.argv[3] or None
+cols      = [col_arg] if col_arg else all_cols
+PRIO_ORD  = {'high': 0, 'medium': 1, 'low': 2}
+
+def read_frontmatter(path):
+    priority, tags = 'medium', []
+    lines = Path(path).read_text().splitlines()
+    in_fm, dashes = False, 0
+    for line in lines:
+        if line.strip() == '---':
+            dashes += 1
+            in_fm = dashes == 1
+            if dashes == 2: break
+            continue
+        if not in_fm: continue
+        if line.startswith('priority:'):
+            priority = line[len('priority:'):].strip().lower()
+        elif line.startswith('tags:'):
+            part = line[len('tags:'):].strip()
+            if part.startswith('[') and part.endswith(']'):
+                tags = [t.strip().lower() for t in part[1:-1].split(',') if t.strip()]
+    return priority, tags
+
+for col in cols:
+    print(f'## {col}')
+    if not os.path.isdir(col):
+        print('  (missing)')
+        continue
+    tasks = []
+    for f in sorted(Path(col).glob('*.md')):
+        prio, tags = read_frontmatter(f)
+        if prio_f and prio != prio_f: continue
+        if tag_f and tag_f not in tags: continue
+        tasks.append((prio, tags, f.stem))
+    if not tasks:
+        label = '(no matches)' if (prio_f or tag_f) else '(empty)'
+        print(f'  {label}')
+    else:
+        for prio, tags, slug in sorted(tasks, key=lambda x: (PRIO_ORD.get(x[0], 3), x[2])):
+            tag_str = ('  ' + ' '.join(f'#{t}' for t in tags)) if tags else ''
+            print(f'  - {slug}  [{prio}]{tag_str}')
+" "$column" "$priority_filter" "$tag_filter"
     ;;
 
   show)

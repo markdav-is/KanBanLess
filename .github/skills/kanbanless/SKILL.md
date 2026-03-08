@@ -42,7 +42,7 @@ If neither CLI is available, perform all operations using built-in file and dire
 | `init [name]` | Create `<name>/backlog/`, `<name>/todo/`, `<name>/doing/`, `<name>/done/` |
 | `add <title>` | Write a `.md` file to `backlog/<slug>.md` using the task format below |
 | `move <task> <col>` | Move (rename) the `.md` file from its current column dir to the target |
-| `list [col]` | Read directory listings for one or all column dirs |
+| `list [col] [--priority p] [--tag t]` | Read directory listings; parse frontmatter to filter/sort |
 | `show <task>` | Read the `.md` file content |
 | `check <task> <item>` | Read the file, replace `- [ ] <item>` with `- [x] <item>`, write back |
 | `status` | Count `.md` files in each column directory |
@@ -56,7 +56,7 @@ If neither CLI is available, perform all operations using built-in file and dire
 | `kanban init [name]` | Create a board folder (default: `kanban`) with 4 column directories. Auto-increments if the name exists (`kanban-1`, `kanban-2`, …). |
 | `kanban add <title>` | Create a new task `.md` in `backlog/` |
 | `kanban move <task> <column>` | Move a task file to a new column directory |
-| `kanban list [column]` | List tasks in one or all columns |
+| `kanban list [column] [--priority high\|medium\|low] [--tag <tag>]` | List tasks sorted high→medium→low; optionally filter by priority or tag |
 | `kanban show <task>` | Display a task's content |
 | `kanban check <task> <item>` | Mark a checklist item complete |
 | `kanban status` | Show board summary (count per column) |

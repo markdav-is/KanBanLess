@@ -13,7 +13,7 @@ return args[0] switch
     "init"   => Init(args.Length > 1 ? string.Join(" ", args[1..]) : "kanban"),
     "add"    => Add(string.Join(" ", args[1..])),
     "move"   => Move(args.ElementAtOrDefault(1), args.ElementAtOrDefault(2)),
-    "list"   => List(args.ElementAtOrDefault(1)),
+    "list"   => List(args.Length > 1 ? args[1..] : []),
     "show"   => Show(args.ElementAtOrDefault(1)),
     "check"  => Check(args.ElementAtOrDefault(1), string.Join(" ", args[2..])),
     "status" => Status(),
@@ -102,18 +102,30 @@ int Move(string? task, string? column)
     return 0;
 }
 
-int List(string? column)
+int List(string[] listArgs)
 {
+    string? column         = null;
+    string? priorityFilter = null;
+    string? tagFilter      = null;
+
+    for (int i = 0; i < listArgs.Length; i++)
+    {
+        if (listArgs[i] == "--priority" && i + 1 < listArgs.Length)
+            priorityFilter = listArgs[++i].ToLowerInvariant();
+        else if (listArgs[i] == "--tag" && i + 1 < listArgs.Length)
+            tagFilter = listArgs[++i].ToLowerInvariant();
+        else if (!listArgs[i].StartsWith("--"))
+            column = listArgs[i];
+    }
+
+    if (column is not null && !ValidateColumn(column)) return 1;
+
     if (column is not null)
-    {
-        if (!ValidateColumn(column)) return 1;
-        PrintColumn(column);
-    }
+        PrintColumn(column, priorityFilter, tagFilter);
     else
-    {
         foreach (var col in columns)
-            PrintColumn(col);
-    }
+            PrintColumn(col, priorityFilter, tagFilter);
+
     return 0;
 }
 
@@ -183,7 +195,46 @@ int Status()
 // Helpers
 // ---------------------------------------------------------------------------
 
-void PrintColumn(string col)
+TaskInfo ReadTaskInfo(string filePath)
+{
+    var slug     = Path.GetFileNameWithoutExtension(filePath);
+    var priority = "medium";
+    var tags     = Array.Empty<string>();
+
+    var lines     = File.ReadAllLines(filePath);
+    var inFm      = false;
+    var dashCount = 0;
+
+    foreach (var line in lines)
+    {
+        if (line.Trim() == "---")
+        {
+            dashCount++;
+            inFm = dashCount == 1;
+            if (dashCount == 2) break;
+            continue;
+        }
+        if (!inFm) continue;
+
+        if (line.StartsWith("priority:"))
+            priority = line["priority:".Length..].Trim().ToLowerInvariant();
+        else if (line.StartsWith("tags:"))
+        {
+            var part = line["tags:".Length..].Trim();
+            if (part.StartsWith("[") && part.EndsWith("]"))
+                tags = part[1..^1]
+                    .Split(',')
+                    .Select(t => t.Trim().ToLowerInvariant())
+                    .Where(t => t.Length > 0)
+                    .ToArray();
+        }
+    }
+    return new TaskInfo(slug, priority, tags);
+}
+
+int PriorityOrder(string p) => p switch { "high" => 0, "medium" => 1, "low" => 2, _ => 3 };
+
+void PrintColumn(string col, string? priorityFilter, string? tagFilter)
 {
     Console.WriteLine($"## {col}");
     if (!Directory.Exists(col))
@@ -191,12 +242,30 @@ void PrintColumn(string col)
         Console.WriteLine("  (missing)");
         return;
     }
-    var files = Directory.GetFiles(col, "*.md").OrderBy(f => f).ToArray();
-    if (files.Length == 0)
-        Console.WriteLine("  (empty)");
+
+    var tasks = Directory.GetFiles(col, "*.md")
+        .Select(ReadTaskInfo)
+        .Where(t => priorityFilter is null || t.Priority == priorityFilter)
+        .Where(t => tagFilter is null || t.Tags.Contains(tagFilter))
+        .OrderBy(t => PriorityOrder(t.Priority))
+        .ThenBy(t => t.Slug)
+        .ToArray();
+
+    if (tasks.Length == 0)
+    {
+        var label = priorityFilter is not null || tagFilter is not null ? "(no matches)" : "(empty)";
+        Console.WriteLine($"  {label}");
+    }
     else
-        foreach (var f in files)
-            Console.WriteLine($"  - {Path.GetFileNameWithoutExtension(f)}");
+    {
+        foreach (var task in tasks)
+        {
+            var tagStr = task.Tags.Length > 0
+                ? "  " + string.Join(" ", task.Tags.Select(t => $"#{t}"))
+                : "";
+            Console.WriteLine($"  - {task.Slug}  [{task.Priority}]{tagStr}");
+        }
+    }
 }
 
 string? FindTask(string slug)
@@ -243,7 +312,9 @@ void PrintUsage(TextWriter? writer = null)
                                   other commands.
           add <title>             Create a new task .md in backlog/
           move <task> <column>    Move a task file to a new column directory
-          list [column]           List tasks in one or all columns
+          list [column]           List tasks; sorted high→medium→low by default
+            [--priority high|medium|low]  Filter by priority
+            [--tag <tag>]                 Filter by tag
           show <task>             Display a task's content
           check <task> <item>     Mark a checklist item complete
           status                  Show board summary (count per column)
@@ -251,3 +322,9 @@ void PrintUsage(TextWriter? writer = null)
         Columns: backlog, todo, doing, done
         """);
 }
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+record TaskInfo(string Slug, string Priority, string[] Tags);
