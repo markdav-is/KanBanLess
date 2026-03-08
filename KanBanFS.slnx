@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/KanBanFS.Cli/KanBanFS.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/KanBanFS.Cli.Tests/KanBanFS.Cli.Tests.csproj" />
+  </Folder>
+</Solution>
