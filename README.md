@@ -21,7 +21,7 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 
 **Option A — .NET global tool (recommended)**
 
-Requires [.NET 8 SDK or later](https://dotnet.microsoft.com/download).
+Requires [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
 dotnet tool install -g KanBanLess.Cli
@@ -76,10 +76,10 @@ Install the .NET SDK for your distro:
 
 ```bash
 # Ubuntu / Debian
-sudo apt-get install -y dotnet-sdk-8.0
+sudo apt-get install -y dotnet-sdk-10.0
 
 # Fedora / RHEL
-sudo dnf install dotnet-sdk-8.0
+sudo dnf install dotnet-sdk-10.0
 ```
 
 Then install the tool:
