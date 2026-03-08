@@ -16,8 +16,10 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 ## Quick Start
 
 ```bash
-# Initialise a board in the current directory
+# Initialise a board (creates a kanban/ folder; use a name to customise)
 ./kanban init
+./kanban init "My Project"   # creates my-project/ (or my-project-1/ if taken)
+cd kanban
 
 # Add tasks
 ./kanban add "Design the data model"
@@ -44,7 +46,7 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 
 | Command | Description |
 |---|---|
-| `kanban init` | Create the 4 column directories |
+| `kanban init [name]` | Create a board folder (default: `kanban`) with 4 columns. Auto-increments if name exists. |
 | `kanban add <title>` | Create a new task in `backlog/` |
 | `kanban move <task> <column>` | Move a task to a new column |
 | `kanban list [column]` | List tasks in one or all columns |

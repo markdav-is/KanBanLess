@@ -12,7 +12,10 @@ usage() {
 Usage: kanban <command> [args]
 
 Commands:
-  init                    Create the 4 column directories in the current folder
+  init [name]             Create a board folder with 4 column directories.
+                          Defaults to 'kanban'; auto-increments if it exists
+                          (kanban-1, kanban-2, …). cd into the folder to use
+                          other commands.
   add <title>             Create a new task .md in backlog/
   move <task> <column>    Move a task file to a new column directory
   list [column]           List tasks in one or all columns
@@ -62,11 +65,21 @@ shift || true
 case "$cmd" in
 
   init)
-    for col in "${COLUMNS[@]}"; do
-      mkdir -p "$col"
-      echo "  created $col/"
+    base="${1:-kanban}"
+    base=$(slugify "$base")
+    # Find a free board name: <base>, <base>-1, <base>-2, …
+    board="$base"
+    n=1
+    while [[ -d "$board" ]]; do
+      board="${base}-${n}"
+      (( n++ ))
     done
-    echo "Board initialised."
+    for col in "${COLUMNS[@]}"; do
+      mkdir -p "$board/$col"
+      echo "  created $board/$col/"
+    done
+    echo "Board initialised: $board/"
+    echo "  → cd $board"
     ;;
 
   add)

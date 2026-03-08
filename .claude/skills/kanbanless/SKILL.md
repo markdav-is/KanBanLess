@@ -15,7 +15,7 @@ The `kanban` script lives at the repository root. Run it as `./kanban <command>`
 
 | Command | Description |
 |---|---|
-| `./kanban init` | Create the 4 column directories in the current folder |
+| `./kanban init [name]` | Create a board folder (default: `kanban`) with 4 column directories. Auto-increments if the name exists (`kanban-1`, `kanban-2`, …). |
 | `./kanban add <title>` | Create a new task `.md` in `backlog/` |
 | `./kanban move <task> <column>` | Move a task file to a new column directory |
 | `./kanban list [column]` | List tasks in one or all columns |
