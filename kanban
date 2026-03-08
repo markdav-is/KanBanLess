@@ -41,6 +41,11 @@ slugify() {
 # Find which column contains a given task slug; prints the path or exits 1
 find_task() {
   local slug="$1"
+  # Validate slug to prevent path traversal and enforce slug format
+  if [[ ! "$slug" =~ ^[a-z0-9-]+$ ]]; then
+    echo "Error: invalid task slug '$slug'. Slugs must contain only lowercase letters, digits, and dashes." >&2
+    return 1
+  fi
   for col in "${COLUMNS[@]}"; do
     if [[ -f "$col/${slug}.md" ]]; then
       echo "$col/${slug}.md"
