@@ -310,7 +310,7 @@ string? FindTask(string slug)
 
 bool IsValidSlug(string slug) =>
     !string.IsNullOrEmpty(slug) &&
-    Regex.IsMatch(slug, @"^[a-z0-9][a-z0-9-]*$");
+    Regex.IsMatch(slug, @"^[a-z0-9]+(?:-[a-z0-9]+)*$");
 
 bool ValidateColumn(string col)
 {
