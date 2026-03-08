@@ -13,12 +13,29 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 | Task | A `.md` file with YAML frontmatter and a markdown checklist |
 | Move | Moving a file between column directories |
 
+## Installation
+
+### .NET Global Tool (Windows, Linux, macOS)
+
+```
+dotnet tool install -g KanBanLess.Cli
+kanban init
+```
+
+### Bash script (Linux / macOS)
+
+The `kanban` bash script at the repo root requires no install — just run `./kanban <command>` from the project directory.
+
+### No install (agents)
+
+Agents can skip the CLI entirely and operate directly on the file system using their built-in file tools. The skill files describe exactly how.
+
 ## Quick Start
 
 ```bash
 # Initialise a board (creates a kanban/ folder; use a name to customise)
-./kanban init
-./kanban init "My Project"   # creates my-project/ (or my-project-1/ if taken)
+kanban init
+kanban init "My Project"   # creates my-project/ (or my-project-1/ if taken)
 cd kanban
 
 # Add tasks
@@ -109,7 +126,7 @@ KanBanLess ships skill definition files for AI coding agents:
 - **No database, no server** — the file system is the source of truth
 - **Git-compatible** — all plain text, commit your board alongside your code
 - **Agent-first** — designed to be driven by AI coding agents
-- **Zero dependencies** — the `kanban` script is a single portable bash file
+- **Cross-platform** — C# .NET global tool works on Windows, Linux, and macOS without Git Bash
 
 ## Future
 

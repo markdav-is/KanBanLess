@@ -1,0 +1,253 @@
+using System.Text.RegularExpressions;
+
+string[] columns = ["backlog", "todo", "doing", "done"];
+
+if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
+{
+    PrintUsage();
+    return 0;
+}
+
+return args[0] switch
+{
+    "init"   => Init(args.Length > 1 ? string.Join(" ", args[1..]) : "kanban"),
+    "add"    => Add(string.Join(" ", args[1..])),
+    "move"   => Move(args.ElementAtOrDefault(1), args.ElementAtOrDefault(2)),
+    "list"   => List(args.ElementAtOrDefault(1)),
+    "show"   => Show(args.ElementAtOrDefault(1)),
+    "check"  => Check(args.ElementAtOrDefault(1), string.Join(" ", args[2..])),
+    "status" => Status(),
+    _        => Unknown(args[0]),
+};
+
+// ---------------------------------------------------------------------------
+// Commands
+// ---------------------------------------------------------------------------
+
+int Init(string name)
+{
+    var slug  = Slugify(name);
+    var board = slug;
+    var n     = 1;
+    while (Directory.Exists(board))
+        board = $"{slug}-{n++}";
+
+    foreach (var col in columns)
+    {
+        Directory.CreateDirectory(Path.Combine(board, col));
+        Console.WriteLine($"  created {board}/{col}/");
+    }
+    Console.WriteLine($"Board initialised: {board}/");
+    Console.WriteLine($"  → cd {board}");
+    return 0;
+}
+
+int Add(string title)
+{
+    if (string.IsNullOrWhiteSpace(title))
+    {
+        Console.Error.WriteLine("Usage: kanban add <title>");
+        return 1;
+    }
+    if (!Directory.Exists("backlog"))
+    {
+        Console.Error.WriteLine("Error: backlog/ not found. Run 'kanban init' first.");
+        return 1;
+    }
+    var slug = Slugify(title);
+    var file = Path.Combine("backlog", $"{slug}.md");
+    if (File.Exists(file))
+    {
+        Console.Error.WriteLine($"Error: task already exists: {file}");
+        return 1;
+    }
+    File.WriteAllText(file, $"""
+        ---
+        priority: medium
+        tags: []
+        ---
+
+        # {title}
+
+        Brief description of the task.
+
+        ## Checklist
+
+        - [ ] Step one
+        - [ ] Step two
+        - [ ] Step three
+
+        """);
+    Console.WriteLine($"Created: {file}");
+    return 0;
+}
+
+int Move(string? task, string? column)
+{
+    if (string.IsNullOrEmpty(task) || string.IsNullOrEmpty(column))
+    {
+        Console.Error.WriteLine("Usage: kanban move <task> <column>");
+        return 1;
+    }
+    if (!ValidateColumn(column)) return 1;
+    var src = FindTask(task);
+    if (src is null) return 1;
+    if (!Directory.Exists(column))
+    {
+        Console.Error.WriteLine($"Error: column '{column}/' not found. Run 'kanban init' first.");
+        return 1;
+    }
+    File.Move(src, Path.Combine(column, $"{task}.md"));
+    Console.WriteLine($"Moved: {task}  →  {column}");
+    return 0;
+}
+
+int List(string? column)
+{
+    if (column is not null)
+    {
+        if (!ValidateColumn(column)) return 1;
+        PrintColumn(column);
+    }
+    else
+    {
+        foreach (var col in columns)
+            PrintColumn(col);
+    }
+    return 0;
+}
+
+int Show(string? task)
+{
+    if (string.IsNullOrEmpty(task))
+    {
+        Console.Error.WriteLine("Usage: kanban show <task>");
+        return 1;
+    }
+    var file = FindTask(task);
+    if (file is null) return 1;
+    Console.Write(File.ReadAllText(file));
+    return 0;
+}
+
+int Check(string? task, string item)
+{
+    if (string.IsNullOrEmpty(task) || string.IsNullOrEmpty(item))
+    {
+        Console.Error.WriteLine("Usage: kanban check <task> <item>");
+        return 1;
+    }
+    var file = FindTask(task);
+    if (file is null) return 1;
+
+    var content    = File.ReadAllText(file);
+    var unchecked_ = $"- [ ] {item}";
+    var checked_   = $"- [x] {item}";
+
+    if (content.Contains(unchecked_))
+    {
+        File.WriteAllText(file, content.Replace(unchecked_, checked_));
+        Console.WriteLine($"Checked: \"{item}\" in {task}");
+    }
+    else if (content.Contains(checked_))
+    {
+        Console.WriteLine($"Already checked: \"{item}\" in {task}");
+    }
+    else
+    {
+        Console.Error.WriteLine($"Error: checklist item not found: \"{item}\"");
+        return 1;
+    }
+    return 0;
+}
+
+int Status()
+{
+    Console.WriteLine("Board Status");
+    Console.WriteLine("============");
+    var total = 0;
+    foreach (var col in columns)
+    {
+        var count = Directory.Exists(col)
+            ? Directory.GetFiles(col, "*.md").Length
+            : 0;
+        Console.WriteLine($"  {col,-10} {count}");
+        total += count;
+    }
+    Console.WriteLine("------------");
+    Console.WriteLine($"  {"total",-10} {total}");
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+void PrintColumn(string col)
+{
+    Console.WriteLine($"## {col}");
+    if (!Directory.Exists(col))
+    {
+        Console.WriteLine("  (missing)");
+        return;
+    }
+    var files = Directory.GetFiles(col, "*.md").OrderBy(f => f).ToArray();
+    if (files.Length == 0)
+        Console.WriteLine("  (empty)");
+    else
+        foreach (var f in files)
+            Console.WriteLine($"  - {Path.GetFileNameWithoutExtension(f)}");
+}
+
+string? FindTask(string slug)
+{
+    foreach (var col in columns)
+    {
+        var path = Path.Combine(col, $"{slug}.md");
+        if (File.Exists(path)) return path;
+    }
+    Console.Error.WriteLine($"Error: task not found: {slug}");
+    return null;
+}
+
+bool ValidateColumn(string col)
+{
+    if (columns.Contains(col)) return true;
+    Console.Error.WriteLine($"Error: invalid column '{col}'. Must be one of: {string.Join(", ", columns)}");
+    return false;
+}
+
+string Slugify(string input) =>
+    Regex.Replace(
+        Regex.Replace(input.ToLowerInvariant(), @"[^a-z0-9]+", "-"),
+        @"^-|-$", "");
+
+int Unknown(string cmd)
+{
+    Console.Error.WriteLine($"Error: unknown command '{cmd}'");
+    Console.Error.WriteLine();
+    PrintUsage(Console.Error);
+    return 1;
+}
+
+void PrintUsage(TextWriter? writer = null)
+{
+    writer ??= Console.Out;
+    writer.WriteLine("""
+        Usage: kanban <command> [args]
+
+        Commands:
+          init [name]             Create a board folder with 4 column directories.
+                                  Defaults to 'kanban'; auto-increments if it exists
+                                  (kanban-1, kanban-2, …). cd into the folder to use
+                                  other commands.
+          add <title>             Create a new task .md in backlog/
+          move <task> <column>    Move a task file to a new column directory
+          list [column]           List tasks in one or all columns
+          show <task>             Display a task's content
+          check <task> <item>     Mark a checklist item complete
+          status                  Show board summary (count per column)
+
+        Columns: backlog, todo, doing, done
+        """);
+}
