@@ -47,45 +47,50 @@ int Add(string title)
     if (string.IsNullOrWhiteSpace(title))
     {
         Console.Error.WriteLine("Usage: kanban add <title>");
-        return 1;
-    }
-    if (!Directory.Exists("backlog"))
-    {
-        Console.Error.WriteLine("Error: backlog/ not found. Run 'kanban init' first.");
-        return 1;
-    }
-    var slug = Slugify(title);
-    if (string.IsNullOrWhiteSpace(slug) || !Regex.IsMatch(slug, "^[a-z0-9_-]+$"))
-    {
-        Console.Error.WriteLine("Error: could not generate a valid slug from the title. Please use letters, numbers, spaces, hyphens or underscores.");
-        return 1;
-    }
-    var file = Path.Combine("backlog", $"{slug}.md");
-    if (File.Exists(file))
-    {
-        Console.Error.WriteLine($"Error: task already exists: {file}");
-        return 1;
-    }
-    File.WriteAllText(file, $"""
-        ---
-        priority: medium
-        tags: []
-        ---
+        int Add(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                Console.Error.WriteLine("Usage: kanban add <title>");
+                return 1;
+            }
+            if (!Directory.Exists("backlog"))
+            {
+                Console.Error.WriteLine("Error: backlog/ not found. Run 'kanban init' first.");
+                return 1;
+            }
+            var slug = Slugify(title);
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                Console.Error.WriteLine("Error: could not generate a valid slug from title. Please include letters or numbers in the title.");
+                return 1;
+            }
+            var file = Path.Combine("backlog", $"{slug}.md");
+            if (File.Exists(file))
+            {
+                Console.Error.WriteLine($"Error: task already exists: {file}");
+                return 1;
+            }
+            File.WriteAllText(file, $"""
+                ---
+                priority: medium
+                tags: []
+                ---
 
-        # {title}
+                # {title}
 
-        Brief description of the task.
+                Brief description of the task.
 
-        ## Checklist
+                ## Checklist
 
-        - [ ] Step one
-        - [ ] Step two
-        - [ ] Step three
+                - [ ] Step one
+                - [ ] Step two
+                - [ ] Step three
 
-        """);
-    Console.WriteLine($"Created: {file}");
-    return 0;
-}
+                """);
+            Console.WriteLine($"Created: {file}");
+            return 0;
+        }
 
 int Move(string? task, string? column)
 {
