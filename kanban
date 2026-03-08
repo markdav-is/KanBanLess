@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# kanban — KanBanLess CLI
+# Manages a Kanban board entirely in the file system.
+# Board = directory, Columns = subdirectories, Tasks = .md files
+
+set -euo pipefail
+
+COLUMNS=("backlog" "todo" "doing" "done")
+
+usage() {
+  cat <<EOF
+Usage: kanban <command> [args]
+
+Commands:
+  init                    Create the 4 column directories in the current folder
+  add <title>             Create a new task .md in backlog/
+  move <task> <column>    Move a task file to a new column directory
+  list [column]           List tasks in one or all columns
+  show <task>             Display a task's content
+  check <task> <item>     Mark a checklist item complete
+  status                  Show board summary (count per column)
+
+Columns: backlog, todo, doing, done
+EOF
+}
+
+# Convert a title to a URL/filename-safe slug
+slugify() {
+  echo "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^a-z0-9]/-/g' \
+    | sed 's/-\+/-/g' \
+    | sed 's/^-//;s/-$//'
+}
+
+# Find which column contains a given task slug; prints the path or exits 1
+find_task() {
+  local slug="$1"
+  for col in "${COLUMNS[@]}"; do
+    if [[ -f "$col/${slug}.md" ]]; then
+      echo "$col/${slug}.md"
+      return 0
+    fi
+  done
+  echo "Error: task not found: $slug" >&2
+  return 1
+}
+
+# Validate that a column name is one of the four known columns
+validate_column() {
+  local col="$1"
+  for c in "${COLUMNS[@]}"; do
+    [[ "$c" == "$col" ]] && return 0
+  done
+  echo "Error: invalid column '$col'. Must be one of: ${COLUMNS[*]}" >&2
+  return 1
+}
+
+cmd="${1:-}"
+shift || true
+
+case "$cmd" in
+
+  init)
+    for col in "${COLUMNS[@]}"; do
+      mkdir -p "$col"
+      echo "  created $col/"
+    done
+    echo "Board initialised."
+    ;;
+
+  add)
+    title="$*"
+    if [[ -z "$title" ]]; then
+      echo "Usage: kanban add <title>" >&2
+      exit 1
+    fi
+    slug=$(slugify "$title")
+    file="backlog/${slug}.md"
+    if [[ ! -d "backlog" ]]; then
+      echo "Error: backlog/ directory not found. Run 'kanban init' first." >&2
+      exit 1
+    fi
+    if [[ -f "$file" ]]; then
+      echo "Error: task already exists: $file" >&2
+      exit 1
+    fi
+    cat > "$file" <<MDEOF
+---
+priority: medium
+tags: []
+---
+
+# ${title}
+
+Brief description of the task.
+
+## Checklist
+
+- [ ] Step one
+- [ ] Step two
+- [ ] Step three
+MDEOF
+    echo "Created: $file"
+    ;;
+
+  move)
+    task="${1:-}"
+    column="${2:-}"
+    if [[ -z "$task" || -z "$column" ]]; then
+      echo "Usage: kanban move <task> <column>" >&2
+      exit 1
+    fi
+    validate_column "$column"
+    src=$(find_task "$task")
+    if [[ ! -d "$column" ]]; then
+      echo "Error: column directory '$column/' not found. Run 'kanban init' first." >&2
+      exit 1
+    fi
+    mv "$src" "$column/${task}.md"
+    echo "Moved: $task  →  $column"
+    ;;
+
+  list)
+    column="${1:-}"
+    if [[ -n "$column" ]]; then
+      validate_column "$column"
+      echo "## $column"
+      shopt -s nullglob
+      files=("$column"/*.md)
+      shopt -u nullglob
+      if [[ ${#files[@]} -eq 0 ]]; then
+        echo "  (empty)"
+      else
+        for f in "${files[@]}"; do
+          echo "  - $(basename "$f" .md)"
+        done
+      fi
+    else
+      for col in "${COLUMNS[@]}"; do
+        echo "## $col"
+        shopt -s nullglob
+        files=("$col"/*.md)
+        shopt -u nullglob
+        if [[ ${#files[@]} -eq 0 ]]; then
+          echo "  (empty)"
+        else
+          for f in "${files[@]}"; do
+            echo "  - $(basename "$f" .md)"
+          done
+        fi
+      done
+    fi
+    ;;
+
+  show)
+    task="${1:-}"
+    if [[ -z "$task" ]]; then
+      echo "Usage: kanban show <task>" >&2
+      exit 1
+    fi
+    file=$(find_task "$task")
+    cat "$file"
+    ;;
+
+  check)
+    task="${1:-}"
+    item="${2:-}"
+    if [[ -z "$task" || -z "$item" ]]; then
+      echo "Usage: kanban check <task> <item>" >&2
+      exit 1
+    fi
+    file=$(find_task "$task")
+    # Use python3 for reliable fixed-string search and in-place replace;
+    # avoids grep/sed quoting pitfalls when item text starts with '-'.
+    result=$(python3 -c "
+import sys
+path, item = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    content = f.read()
+unchecked = '- [ ] ' + item
+checked   = '- [x] ' + item
+if unchecked in content:
+    with open(path, 'w') as f:
+        f.write(content.replace(unchecked, checked, 1))
+    print('checked')
+elif checked in content:
+    print('already')
+else:
+    print('notfound')
+" "$file" "$item")
+    case "$result" in
+      checked)  echo "Checked: \"${item}\" in $task" ;;
+      already)  echo "Already checked: \"${item}\" in $task" ;;
+      notfound) echo "Error: checklist item not found: \"${item}\"" >&2; exit 1 ;;
+    esac
+    ;;
+
+  status)
+    echo "Board Status"
+    echo "============"
+    total=0
+    for col in "${COLUMNS[@]}"; do
+      shopt -s nullglob
+      files=("$col"/*.md)
+      shopt -u nullglob
+      count=${#files[@]}
+      printf "  %-10s %d\n" "$col" "$count"
+      (( total += count )) || true
+    done
+    echo "------------"
+    printf "  %-10s %d\n" "total" "$total"
+    ;;
+
+  ""|help|--help|-h)
+    usage
+    ;;
+
+  *)
+    echo "Error: unknown command '$cmd'" >&2
+    echo "" >&2
+    usage >&2
+    exit 1
+    ;;
+
+esac
