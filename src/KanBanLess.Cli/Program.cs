@@ -55,6 +55,11 @@ int Add(string title)
         return 1;
     }
     var slug = Slugify(title);
+    if (string.IsNullOrWhiteSpace(slug) || !Regex.IsMatch(slug, "^[a-z0-9_-]+$"))
+    {
+        Console.Error.WriteLine("Error: could not generate a valid slug from the title. Please use letters, numbers, spaces, hyphens or underscores.");
+        return 1;
+    }
     var file = Path.Combine("backlog", $"{slug}.md");
     if (File.Exists(file))
     {
