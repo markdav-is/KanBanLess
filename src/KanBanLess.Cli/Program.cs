@@ -297,6 +297,11 @@ void PrintColumn(string col, string? priorityFilter, string? tagFilter)
 
 string? FindTask(string slug)
 {
+    if (!IsValidSlug(slug))
+    {
+        Console.Error.WriteLine($"Error: invalid task slug '{slug}'. Slugs may only contain lowercase letters, digits, and hyphens.");
+        return null;
+    }
     foreach (var col in columns)
     {
         var path = Path.Combine(col, $"{slug}.md");
@@ -305,6 +310,10 @@ string? FindTask(string slug)
     Console.Error.WriteLine($"Error: task not found: {slug}");
     return null;
 }
+
+bool IsValidSlug(string slug) =>
+    !string.IsNullOrEmpty(slug) &&
+    Regex.IsMatch(slug, @"^[a-z0-9][a-z0-9-]*$");
 
 bool ValidateColumn(string col)
 {
