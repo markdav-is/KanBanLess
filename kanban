@@ -137,7 +137,7 @@ MDEOF
       echo "Error: column directory '$column/' not found. Run 'kanban init' first." >&2
       exit 1
     fi
-    mv "$src" "$column/${task}.md"
+    mv "$src" "$column/$(basename "$src")"
     echo "Moved: $task  →  $column"
     ;;
 
