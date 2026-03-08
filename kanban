@@ -147,8 +147,24 @@ MDEOF
     tag_filter=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --priority) priority_filter="${2:-}"; shift 2 ;;
-        --tag)      tag_filter="${2:-}";      shift 2 ;;
+        --priority)
+          if [[ $# -lt 2 || "${2-}" == --* ]]; then
+            echo "Error: --priority requires an argument (high|medium|low)" >&2
+            usage
+            exit 1
+          fi
+          priority_filter="$2"
+          shift 2
+          ;;
+        --tag)
+          if [[ $# -lt 2 || "${2-}" == --* ]]; then
+            echo "Error: --tag requires an argument" >&2
+            usage
+            exit 1
+          fi
+          tag_filter="$2"
+          shift 2
+          ;;
         *)          column="$1";              shift   ;;
       esac
     done
