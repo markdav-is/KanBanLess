@@ -23,8 +23,8 @@ AI agents with file system access can use KanBanLess without any installation. A
 
 | Agent | Skill file |
 |---|---|
-| Claude Code | `.claude/skills/kanbanless/SKILL.md` |
-| GitHub Copilot | `.github/skills/kanbanless/SKILL.md` |
+| Claude Code | `.claude/skills/kanban/SKILL.md` |
+| GitHub Copilot | `.github/skills/kanban/SKILL.md` |
 
 ```bash
 # Add the skill files to your project (one-time setup)
