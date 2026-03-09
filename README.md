@@ -2,6 +2,8 @@
 
 Less is more. Kanban in the File System.
 
+<img width="333" height="333" alt="image" src="https://github.com/user-attachments/assets/3ae65c99-3dec-4c2c-80d1-a94d73750694" />
+
 An AI agent skill for managing a Kanban board entirely in the file system — no database, no server, no dependencies.
 
 ## How It Works
