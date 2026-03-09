@@ -366,7 +366,7 @@ MDEOF
     for i in "${!current_order[@]}"; do
       [[ "${current_order[$i]}" == "$task" ]] && { idx=$i; break; }
     done
-    [[ $idx -eq -1 ]] && { echo "Error: task '$task' not found in $col" >&2; exit 1; }
+    [[ $idx -eq -1 ]] && { echo "Error: task '$task' not found in column '$col'" >&2; exit 1; }
 
     len=${#current_order[@]}
 
