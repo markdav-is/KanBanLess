@@ -76,7 +76,7 @@ Two skill files teach AI agents how to use KanBanLess:
 | Claude Code | `.claude/skills/kanbanless/SKILL.md` |
 | GitHub Copilot | `.github/skills/kanbanless/SKILL.md` |
 
-Keep these in sync when commands or file formats change.
+Keep these in sync when commands or file formats change. If you intentionally update only one skill file (for example, while migrating one provider to a new YAML format), document the divergence in this section and clearly state which file is currently canonical.
 
 ---
 
