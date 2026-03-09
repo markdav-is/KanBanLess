@@ -397,7 +397,7 @@ string? FindTask(string slug)
 {
     if (!IsValidSlug(slug))
     {
-        Console.Error.WriteLine($"Error: invalid slug '{slug}'. Slugs may only contain lowercase letters, digits, and hyphens.");
+        Console.Error.WriteLine($"Error: invalid task slug '{slug}'. Slugs may only contain lowercase letters, digits, and dashes.");
         return null;
     }
     foreach (var col in columns)
