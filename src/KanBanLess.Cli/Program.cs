@@ -27,7 +27,12 @@ return args[0] switch
 
 int Init(string name)
 {
-    var slug  = Slugify(name);
+    var slug = Slugify(name);
+    if (slug.Length == 0)
+    {
+        Console.Error.WriteLine($"Error: '{name}' produces an empty board name. Please use a name with at least one letter or digit.");
+        return 1;
+    }
     var board = slug;
     var n     = 1;
     while (Directory.Exists(board))
