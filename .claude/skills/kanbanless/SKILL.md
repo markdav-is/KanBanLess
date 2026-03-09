@@ -18,7 +18,7 @@ KanBanLess ships a cross-platform C# .NET global tool and a bash fallback.
 
 Install once via:
 ```
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 ```
 Then call:
 ```
@@ -46,6 +46,7 @@ If neither CLI is available, perform all operations using your built-in file and
 | `show <task>` | Read the `.md` file content |
 | `check <task> <item>` | Read the file, replace `- [ ] <item>` with `- [x] <item>`, write back |
 | `status` | Count `.md` files in each column directory |
+| `order <task> top\|bottom\|up [N]\|down [N]` | Read `<column>/order.txt`, reposition the slug, write back |
 
 ---
 
@@ -60,6 +61,10 @@ If neither CLI is available, perform all operations using your built-in file and
 | `kanban show <task>` | Display a task's content |
 | `kanban check <task> <item>` | Mark a checklist item complete |
 | `kanban status` | Show board summary (count per column) |
+| `kanban order <task> top` | Move task to the top of its column |
+| `kanban order <task> bottom` | Move task to the bottom of its column |
+| `kanban order <task> up [N]` | Move task up N positions (default 1) |
+| `kanban order <task> down [N]` | Move task down N positions (default 1) |
 
 ---
 
@@ -96,14 +101,20 @@ Slug rules: lowercase, non-alphanumeric runs replaced with `-`, no leading/trail
 ```
 <board-name>/
   backlog/
+    order.txt
     task-slug.md
   todo/
+    order.txt
     another-task.md
   doing/
+    order.txt
     in-progress-task.md
   done/
+    order.txt
     completed-task.md
 ```
+
+`order.txt` is a plain-text file with one task slug per line, defining the display order within that column. Tasks not listed in `order.txt` appear after those that are, sorted by priority then slug. When moving a task between columns, remove its slug from the source `order.txt` and append it to the destination `order.txt`.
 
 ---
 
