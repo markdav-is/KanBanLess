@@ -67,7 +67,9 @@ order_remove() {
   [[ -f "$f" ]] || return 0
   local lines=()
   while IFS= read -r line; do
-    [[ "$line" == "$slug" ]] || lines+=("$line")
+    local trimmed
+    trimmed="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ "$trimmed" == "$slug" ]] || lines+=("$line")
   done < "$f"
   if [[ ${#lines[@]} -gt 0 ]]; then
     printf '%s\n' "${lines[@]}" > "$f"
