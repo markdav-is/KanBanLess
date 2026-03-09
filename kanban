@@ -342,11 +342,14 @@ MDEOF
 
     if [[ -f "$col/order.txt" ]]; then
       while IFS= read -r s; do
-        [[ -z "${s// /}" || "$s" == \#* ]] && continue
-        [[ -f "$col/${s}.md" ]] || continue
-        [[ -n "${in_order[$s]+x}" ]] && continue
-        current_order+=("$s")
-        in_order["$s"]=1
+        # Trim leading and trailing whitespace to match C# CLI behavior
+        slug="${s#"${s%%[![:space:]]*}"}"
+        slug="${slug%"${slug##*[![:space:]]}"}"
+        [[ -z "${slug// /}" || "$slug" == \#* ]] && continue
+        [[ -f "$col/${slug}.md" ]] || continue
+        [[ -n "${in_order[$slug]+x}" ]] && continue
+        current_order+=("$slug")
+        in_order["$slug"]=1
       done < "$col/order.txt"
     fi
 
