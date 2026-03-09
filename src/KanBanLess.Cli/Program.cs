@@ -354,7 +354,7 @@ int Order(string? task, string? subcmd, string? nArg)
     var idx = list.IndexOf(task);
     if (idx < 0)
     {
-        Console.Error.WriteLine($"Error: task '{task}' not found in column '{col}'");
+        Console.Error.WriteLine($"Error: task '{task}' not found in {col}");
         return 1;
     }
 
