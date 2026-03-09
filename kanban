@@ -284,11 +284,14 @@ MDEOF
 
       if [[ -f "$col/order.txt" ]]; then
         while IFS= read -r s; do
-          [[ -z "${s// /}" || "$s" == \#* ]] && continue
-          [[ -n "${col_tasks[$s]+x}" ]] || continue
-          [[ -n "${seen_slugs[$s]+x}" ]] && continue
-          print_queue+=("$s")
-          seen_slugs["$s"]=1
+          # Trim leading and trailing whitespace to match C# CLI behavior
+          trimmed=${s#"${s%%[![:space:]]*}"}   # remove leading whitespace
+          trimmed=${trimmed%"${trimmed##*[![:space:]]}"}  # remove trailing whitespace
+          [[ -z "$trimmed" || "$trimmed" == \#* ]] && continue
+          [[ -n "${col_tasks[$trimmed]+x}" ]] || continue
+          [[ -n "${seen_slugs[$trimmed]+x}" ]] && continue
+          print_queue+=("$trimmed")
+          seen_slugs["$trimmed"]=1
         done < "$col/order.txt"
       fi
 
