@@ -67,7 +67,7 @@ If neither CLI is available, perform all operations using your built-in file and
 
 ```
 ---
-priority: low | medium | high
+priority: medium
 tags: []
 ---
 
@@ -82,6 +82,7 @@ Brief description of the task.
 - [ ] Step three
 ```
 
+- `priority` = one of `low`, `medium`, or `high`
 - `id` = filename without `.md` (slug derived from title at creation)
 - `created` = file `ctime` (filesystem)
 - `updated` = file `mtime` (filesystem)
