@@ -17,6 +17,24 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 
 ## Installation
 
+### AI Agents (recommended — no manual install)
+
+AI agents with file system access can use KanBanLess without any installation. Add the skill file to your project and the agent will manage the board directly using its built-in file and directory tools — or install the CLI automatically if needed.
+
+| Agent | Skill file |
+|---|---|
+| Claude Code | `.claude/skills/kanban/SKILL.md` |
+| GitHub Copilot | `.github/skills/kanban/SKILL.md` |
+
+```bash
+# Add the skill files to your project (one-time setup)
+git clone https://github.com/markdav-is/KanBanLess.git /tmp/kanbanless
+cp -r /tmp/kanbanless/.claude .
+cp -r /tmp/kanbanless/.github .
+```
+
+---
+
 ### Windows
 
 **Option A — .NET global tool (recommended)**
@@ -24,7 +42,7 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 Requires [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 ```
 
 `kanban` is then available in any terminal (PowerShell, CMD, Windows Terminal).
@@ -49,7 +67,7 @@ Install the .NET SDK via the [official installer](https://dotnet.microsoft.com/d
 
 ```bash
 brew install dotnet
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 ```
 
 Add the tools directory to your PATH if prompted:
@@ -85,7 +103,7 @@ sudo dnf install dotnet-sdk-10.0
 Then install the tool:
 
 ```bash
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 export PATH="$PATH:$HOME/.dotnet/tools"   # add to ~/.bashrc
 ```
 
@@ -96,17 +114,6 @@ git clone https://github.com/markdav-is/KanBanLess.git
 cd KanBanLess
 ./kanban init
 ```
-
----
-
-### AI Agents (no install)
-
-Agents can skip the CLI entirely. The skill files instruct them to operate directly on the file system using their built-in file and directory tools — no binary, no shell required.
-
-| Agent | Skill file |
-|---|---|
-| Claude Code | `.claude/skills/kanbanless/SKILL.md` |
-| GitHub Copilot | `.github/skills/kanbanless/SKILL.md` |
 
 ---
 

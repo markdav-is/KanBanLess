@@ -11,10 +11,19 @@
     <!-- dotnet global tool -->
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>kanban</ToolCommandName>
-    <PackageId>KanBanLess.Cli</PackageId>
+    <PackageId>KanBanLess</PackageId>
     <Version>1.0.0</Version>
-    <Description>KanBanLess — Kanban board in the file system. Cross-platform .NET global tool.</Description>
+    <Description>KanBanLess — a plain-file Kanban board that lives entirely in your file system. No server, no database — just folders and Markdown files. Install with: dotnet tool install -g KanBanLess</Description>
+    <Authors>markdav-is</Authors>
+    <PackageTags>kanban;cli;productivity;markdown;task</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageOutputPath>../../nupkg</PackageOutputPath>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

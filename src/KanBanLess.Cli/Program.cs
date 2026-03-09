@@ -27,7 +27,12 @@ return args[0] switch
 
 int Init(string name)
 {
-    var slug  = Slugify(name);
+    var slug = Slugify(name);
+    if (slug.Length == 0)
+    {
+        Console.Error.WriteLine($"Error: '{name}' produces an empty board name. Please use a name with at least one letter or digit.");
+        return 1;
+    }
     var board = slug;
     var n     = 1;
     while (Directory.Exists(board))
@@ -96,6 +101,7 @@ int Move(string? task, string? column)
         Console.Error.WriteLine("Usage: kanban move <task> <column>");
         return 1;
     }
+    if (!ValidateSlug(task)) return 1;
     if (!ValidateColumn(column)) return 1;
     var src = FindTask(task);
     if (src is null) return 1;
@@ -160,6 +166,7 @@ int Show(string? task)
         Console.Error.WriteLine("Usage: kanban show <task>");
         return 1;
     }
+    if (!ValidateSlug(task)) return 1;
     var file = FindTask(task);
     if (file is null) return 1;
     Console.Write(File.ReadAllText(file));
@@ -173,6 +180,7 @@ int Check(string? task, string item)
         Console.Error.WriteLine("Usage: kanban check <task> <item>");
         return 1;
     }
+    if (!ValidateSlug(task)) return 1;
     var file = FindTask(task);
     if (file is null) return 1;
 
@@ -358,9 +366,18 @@ int Order(string? task, string? subcmd, string? nArg)
         return 1;
     }
 
-    if (!int.TryParse(nArg, out var n) || n < 1) n = 1;
+    var n = 1;
+    var lowerSubcmd = subcmd.ToLowerInvariant();
+    if (lowerSubcmd is "up" or "down" && nArg is not null)
+    {
+        if (!int.TryParse(nArg, out n) || n < 1)
+        {
+            Console.Error.WriteLine("Error: N must be a positive integer");
+            return 1;
+        }
+    }
 
-    var newIdx = subcmd.ToLowerInvariant() switch
+    var newIdx = lowerSubcmd switch
     {
         "top"    => 0,
         "bottom" => list.Count - 1,
@@ -417,6 +434,19 @@ bool ValidateColumn(string col)
 {
     if (columns.Contains(col)) return true;
     Console.Error.WriteLine($"Error: invalid column '{col}'. Must be one of: {string.Join(", ", columns)}");
+    return false;
+}
+
+bool ValidateSlug(string slug)
+{
+    if (string.IsNullOrEmpty(slug))
+    {
+        Console.Error.WriteLine("Error: task name must not be empty.");
+        return false;
+    }
+    const string SlugPattern = @"^[a-z0-9-]+$";
+    if (Regex.IsMatch(slug, SlugPattern)) return true;
+    Console.Error.WriteLine($"Error: invalid task name '{slug}'. Task names must contain only lowercase letters, digits, and hyphens.");
     return false;
 }
 
