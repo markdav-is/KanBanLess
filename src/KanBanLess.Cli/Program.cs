@@ -366,9 +366,18 @@ int Order(string? task, string? subcmd, string? nArg)
         return 1;
     }
 
-    if (!int.TryParse(nArg, out var n) || n < 1) n = 1;
+    var n = 1;
+    var lowerSubcmd = subcmd.ToLowerInvariant();
+    if (lowerSubcmd is "up" or "down" && nArg is not null)
+    {
+        if (!int.TryParse(nArg, out n) || n < 1)
+        {
+            Console.Error.WriteLine("Error: N must be a positive integer");
+            return 1;
+        }
+    }
 
-    var newIdx = subcmd.ToLowerInvariant() switch
+    var newIdx = lowerSubcmd switch
     {
         "top"    => 0,
         "bottom" => list.Count - 1,
