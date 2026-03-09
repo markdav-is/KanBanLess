@@ -24,7 +24,7 @@ An AI agent skill for managing a Kanban board entirely in the file system — no
 Requires [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```powershell
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 ```
 
 `kanban` is then available in any terminal (PowerShell, CMD, Windows Terminal).
@@ -49,7 +49,7 @@ Install the .NET SDK via the [official installer](https://dotnet.microsoft.com/d
 
 ```bash
 brew install dotnet
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 ```
 
 Add the tools directory to your PATH if prompted:
@@ -85,7 +85,7 @@ sudo dnf install dotnet-sdk-10.0
 Then install the tool:
 
 ```bash
-dotnet tool install -g KanBanLess.Cli
+dotnet tool install -g KanBanLess
 export PATH="$PATH:$HOME/.dotnet/tools"   # add to ~/.bashrc
 ```
 
