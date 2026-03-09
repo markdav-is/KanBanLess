@@ -18,6 +18,7 @@ KanBanLess is a Kanban board that lives entirely in the file system — no datab
 | Fallback CLI | **Bash script** (`./kanban`) | Pure Bash 4+, zero external dependencies (no Python, no Node, no Ruby). Linux/macOS only. |
 | Data store | **File system** | Markdown files with YAML frontmatter. No database, no server. Git-compatible by design. |
 | Task format | **Markdown + YAML frontmatter** | Frontmatter keys: `priority` (`low`\|`medium`\|`high`), `tags` (array). Filesystem metadata (`ctime`/`mtime`) replaces explicit `created`/`updated` fields. |
+| Column order | **`order.txt`** | Optional plain-text file in each column directory (`backlog/order.txt`, etc.). One slug per line. Tasks listed here appear first in `kanban list`; unlisted tasks follow sorted by priority. Maintained automatically by `add`, `move`, and `order` commands. |
 | Future GUI | **MAUI Blazor Hybrid** | Planned cross-platform desktop/mobile client. Reads/writes the same file system structure. Offline, no backend required. |
 
 ---
@@ -62,6 +63,7 @@ KanBanLess/
 - Columns are fixed: `backlog → todo → doing → done`. Do not add new columns without updating both implementations and the skill files.
 - Never write metadata (id, created, updated) into frontmatter — derive it from the filename and filesystem.
 - Output is plain text, human-readable, and stable enough for scripts to parse.
+- `order.txt` in each column directory controls display order. One slug per line. `add` appends to `backlog/order.txt`; `move` removes from source and appends to destination; `order` rewrites the file. Missing entries in `order.txt` (new tasks added externally) sort after listed entries, by priority then slug. Stale entries (slug with no `.md` file) are silently ignored.
 
 ---
 

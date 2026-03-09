@@ -152,6 +152,10 @@ kanban move design-the-data-model done
 | `kanban show <task>` | Display a task's full content |
 | `kanban check <task> <item>` | Mark a checklist item complete |
 | `kanban status` | Show count per column |
+| `kanban order <task> top` | Move task to the top of its column |
+| `kanban order <task> bottom` | Move task to the bottom of its column |
+| `kanban order <task> up [N]` | Move task up N positions (default 1) |
+| `kanban order <task> down [N]` | Move task down N positions (default 1) |
 
 ---
 
