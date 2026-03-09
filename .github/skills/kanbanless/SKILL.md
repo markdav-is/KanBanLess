@@ -67,7 +67,7 @@ If neither CLI is available, perform all operations using built-in file and dire
 
 ```
 ---
-priority: low | medium | high
+priority: medium
 tags: []
 ---
 
@@ -81,6 +81,8 @@ Brief description of the task.
 - [ ] Step two
 - [ ] Step three
 ```
+
+The `priority` field accepts one of three values: `low`, `medium`, or `high`.
 
 - `id` = filename without `.md` (slug derived from title at creation)
 - `created` = file `ctime` (filesystem)

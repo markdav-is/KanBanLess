@@ -18,12 +18,16 @@ Commands:
                           other commands.
   add <title>             Create a new task .md in backlog/
   move <task> <column>    Move a task file to a new column directory
-  list [column]           List tasks; sorted high→medium→low by default
+  list [column]           List tasks; ordered by order.txt, then priority
     [--priority high|medium|low]  Filter by priority
     [--tag <tag>]                 Filter by tag
   show <task>             Display a task's content
   check <task> <item>     Mark a checklist item complete
   status                  Show board summary (count per column)
+  order <task> top        Move task to top of its column
+  order <task> bottom     Move task to bottom of its column
+  order <task> up [N]     Move task up N positions (default 1)
+  order <task> down [N]   Move task down N positions (default 1)
 
 Columns: backlog, todo, doing, done
 EOF
@@ -54,6 +58,30 @@ find_task() {
   done
   echo "Error: task not found: $slug" >&2
   return 1
+}
+
+# Remove a slug from a column's order.txt (no-op if file absent)
+order_remove() {
+  local col="$1" slug="$2"
+  local f="$col/order.txt"
+  [[ -f "$f" ]] || return 0
+  local lines=()
+  while IFS= read -r line; do
+    local trimmed
+    trimmed="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ "$trimmed" == "$slug" ]] || lines+=("$line")
+  done < "$f"
+  if [[ ${#lines[@]} -gt 0 ]]; then
+    printf '%s\n' "${lines[@]}" > "$f"
+  else
+    : > "$f"
+  fi
+}
+
+# Append a slug to a column's order.txt
+order_append() {
+  local col="$1" slug="$2"
+  printf '%s\n' "$slug" >> "$col/order.txt"
 }
 
 # Validate that a column name is one of the four known columns
@@ -121,6 +149,7 @@ Brief description of the task.
 - [ ] Step two
 - [ ] Step three
 MDEOF
+    printf '%s\n' "$slug" >> "backlog/order.txt"
     echo "Created: $file"
     ;;
 
@@ -137,7 +166,10 @@ MDEOF
       echo "Error: column directory '$column/' not found. Run 'kanban init' first." >&2
       exit 1
     fi
+    src_col=$(dirname "$src")
     mv "$src" "$column/${task}.md"
+    order_remove "$src_col" "$task"
+    order_append "$column" "$task"
     echo "Moved: $task  →  $column"
     ;;
 
@@ -147,63 +179,224 @@ MDEOF
     tag_filter=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --priority) priority_filter="${2:-}"; shift 2 ;;
-        --tag)      tag_filter="${2:-}";      shift 2 ;;
+        --priority)
+          if [[ $# -lt 2 || "${2-}" == --* ]]; then
+            echo "Error: --priority requires an argument (high|medium|low)" >&2
+            usage
+            exit 1
+          fi
+          priority_filter="$2"
+          shift 2
+          ;;
+        --tag)
+          if [[ $# -lt 2 || "${2-}" == --* ]]; then
+            echo "Error: --tag requires an argument" >&2
+            usage
+            exit 1
+          fi
+          tag_filter="$2"
+          shift 2
+          ;;
         *)          column="$1";              shift   ;;
       esac
     done
     if [[ -n "$column" ]]; then
       validate_column "$column" || exit 1
+      list_cols=("$column")
+    else
+      list_cols=("${COLUMNS[@]}")
     fi
-    python3 -c "
-import sys, os
-from pathlib import Path
 
-all_cols  = ['backlog', 'todo', 'doing', 'done']
-col_arg   = sys.argv[1]
-prio_f    = sys.argv[2] or None
-tag_f     = sys.argv[3] or None
-cols      = [col_arg] if col_arg else all_cols
-PRIO_ORD  = {'high': 0, 'medium': 1, 'low': 2}
-
-def read_frontmatter(path):
-    priority, tags = 'medium', []
-    lines = Path(path).read_text().splitlines()
-    in_fm, dashes = False, 0
-    for line in lines:
-        if line.strip() == '---':
-            dashes += 1
-            in_fm = dashes == 1
-            if dashes == 2: break
-            continue
-        if not in_fm: continue
-        if line.startswith('priority:'):
-            priority = line[len('priority:'):].strip().lower()
-        elif line.startswith('tags:'):
-            part = line[len('tags:'):].strip()
-            if part.startswith('[') and part.endswith(']'):
-                tags = [t.strip().lower() for t in part[1:-1].split(',') if t.strip()]
-    return priority, tags
-
-for col in cols:
-    print(f'## {col}')
-    if not os.path.isdir(col):
-        print('  (missing)')
+    for col in "${list_cols[@]}"; do
+      echo "## $col"
+      if [[ ! -d "$col" ]]; then
+        echo "  (missing)"
         continue
-    tasks = []
-    for f in sorted(Path(col).glob('*.md')):
-        prio, tags = read_frontmatter(f)
-        if prio_f and prio != prio_f: continue
-        if tag_f and tag_f not in tags: continue
-        tasks.append((prio, tags, f.stem))
-    if not tasks:
-        label = '(no matches)' if (prio_f or tag_f) else '(empty)'
-        print(f'  {label}')
-    else:
-        for prio, tags, slug in sorted(tasks, key=lambda x: (PRIO_ORD.get(x[0], 3), x[2])):
-            tag_str = ('  ' + ' '.join(f'#{t}' for t in tags)) if tags else ''
-            print(f'  - {slug}  [{prio}]{tag_str}')
-" "$column" "$priority_filter" "$tag_filter"
+      fi
+
+      # col_tasks: slug → "prio_ord|prio|tag_str"
+      unset col_tasks; declare -A col_tasks=()
+
+      shopt -s nullglob
+      for f in "$col"/*.md; do
+        fm_prio="medium" fm_tags="" fm_in=0 fm_dashes=0
+        while IFS= read -r fm_line; do
+          if [[ "$fm_line" == "---" ]]; then
+            (( ++fm_dashes ))
+            [[ $fm_dashes -eq 1 ]] && fm_in=1
+            [[ $fm_dashes -eq 2 ]] && break
+            continue
+          fi
+          [[ $fm_in -eq 1 ]] || continue
+          if [[ "$fm_line" =~ ^priority:[[:space:]]*(.*) ]]; then
+            fm_prio="${BASH_REMATCH[1]// /}"
+            fm_prio="${fm_prio,,}"
+          elif [[ "$fm_line" =~ ^tags:[[:space:]]*\[([^\]]*)\] ]]; then
+            fm_tags="${BASH_REMATCH[1]}"
+          fi
+        done < "$f"
+
+        [[ -n "$priority_filter" && "$fm_prio" != "$priority_filter" ]] && continue
+
+        if [[ -n "$tag_filter" ]]; then
+          tag_found=0
+          IFS=',' read -ra tag_arr <<< "$fm_tags"
+          for t in "${tag_arr[@]}"; do
+            t="${t// /}"; t="${t,,}"
+            [[ "$t" == "$tag_filter" ]] && { tag_found=1; break; }
+          done
+          [[ $tag_found -eq 0 ]] && continue
+        fi
+
+        slug=$(basename "$f" .md)
+
+        tag_str=""
+        if [[ -n "${fm_tags//[, ]/}" ]]; then
+          tag_display=""
+          IFS=',' read -ra tag_arr <<< "$fm_tags"
+          for t in "${tag_arr[@]}"; do
+            t="${t// /}"; t="${t,,}"
+            [[ -n "$t" ]] && tag_display+="#$t "
+          done
+          tag_str="  ${tag_display% }"
+        fi
+
+        case "$fm_prio" in
+          high)   prio_ord=0 ;;
+          medium) prio_ord=1 ;;
+          low)    prio_ord=2 ;;
+          *)      prio_ord=3 ;;
+        esac
+
+        col_tasks["$slug"]="${prio_ord}|${fm_prio}|${tag_str}"
+      done
+      shopt -u nullglob
+
+      if [[ ${#col_tasks[@]} -eq 0 ]]; then
+        [[ -n "$priority_filter" || -n "$tag_filter" ]] \
+          && echo "  (no matches)" || echo "  (empty)"
+        continue
+      fi
+
+      # Print queue: order.txt entries first, then remaining sorted by priority
+      unset seen_slugs; declare -A seen_slugs=()
+      print_queue=()
+
+      if [[ -f "$col/order.txt" ]]; then
+        while IFS= read -r s; do
+          # Trim leading and trailing whitespace to match C# CLI behavior
+          trimmed=${s#"${s%%[![:space:]]*}"}   # remove leading whitespace
+          trimmed=${trimmed%"${trimmed##*[![:space:]]}"}  # remove trailing whitespace
+          [[ -z "$trimmed" || "$trimmed" == \#* ]] && continue
+          [[ -n "${col_tasks[$trimmed]+x}" ]] || continue
+          [[ -n "${seen_slugs[$trimmed]+x}" ]] && continue
+          print_queue+=("$trimmed")
+          seen_slugs["$trimmed"]=1
+        done < "$col/order.txt"
+      fi
+
+      remaining_sort=()
+      for s in "${!col_tasks[@]}"; do
+        [[ -n "${seen_slugs[$s]+x}" ]] && continue
+        remaining_sort+=("${col_tasks[$s]%%|*}|${s}")
+      done
+      if [[ ${#remaining_sort[@]} -gt 0 ]]; then
+        _tmp=$(mktemp)
+        printf '%s\n' "${remaining_sort[@]}" | sort > "$_tmp"
+        while IFS='|' read -r _ s; do
+          print_queue+=("$s")
+        done < "$_tmp"
+        rm -f "$_tmp"
+      fi
+
+      for s in "${print_queue[@]}"; do
+        IFS='|' read -r _ prio tag_str <<< "${col_tasks[$s]}"
+        echo "  - $s  [$prio]$tag_str"
+      done
+    done
+    ;;
+
+  order)
+    task="${1:-}"
+    subcmd="${2:-}"
+    n_arg="${3:-1}"
+
+    if [[ -z "$task" || -z "$subcmd" ]]; then
+      echo "Usage: kanban order <task> top|bottom|up [N]|down [N]" >&2
+      exit 1
+    fi
+
+    if [[ "$subcmd" == "up" || "$subcmd" == "down" ]]; then
+      if ! [[ "$n_arg" =~ ^[0-9]+$ ]] || [[ "$n_arg" -eq 0 ]]; then
+        echo "Error: N must be a positive integer" >&2
+        exit 1
+      fi
+    fi
+
+    src=$(find_task "$task")
+    col=$(dirname "$src")
+
+    # Build complete ordered list: order.txt entries (that exist) then unlisted .md files
+    unset in_order; declare -A in_order=()
+    current_order=()
+
+    if [[ -f "$col/order.txt" ]]; then
+      while IFS= read -r s; do
+        # Trim leading and trailing whitespace to match C# CLI behavior
+        slug="${s#"${s%%[![:space:]]*}"}"
+        slug="${slug%"${slug##*[![:space:]]}"}"
+        [[ -z "${slug// /}" || "$slug" == \#* ]] && continue
+        [[ -f "$col/${slug}.md" ]] || continue
+        [[ -n "${in_order[$slug]+x}" ]] && continue
+        current_order+=("$slug")
+        in_order["$slug"]=1
+      done < "$col/order.txt"
+    fi
+
+    shopt -s nullglob
+    for f in "$col"/*.md; do
+      s=$(basename "$f" .md)
+      [[ -n "${in_order[$s]+x}" ]] && continue
+      current_order+=("$s")
+      in_order["$s"]=1
+    done
+    shopt -u nullglob
+
+    idx=-1
+    for i in "${!current_order[@]}"; do
+      [[ "${current_order[$i]}" == "$task" ]] && { idx=$i; break; }
+    done
+    [[ $idx -eq -1 ]] && { echo "Error: task '$task' not found in column '$col'" >&2; exit 1; }
+
+    len=${#current_order[@]}
+
+    case "$subcmd" in
+      top)    new_idx=0 ;;
+      bottom) new_idx=$(( len - 1 )) ;;
+      up)
+        new_idx=$(( idx - n_arg ))
+        [[ $new_idx -lt 0 ]] && new_idx=0
+        ;;
+      down)
+        new_idx=$(( idx + n_arg ))
+        [[ $new_idx -ge $len ]] && new_idx=$(( len - 1 ))
+        ;;
+      *)
+        echo "Error: unknown subcommand '$subcmd'. Use: top, bottom, up [N], down [N]" >&2
+        exit 1
+        ;;
+    esac
+
+    # Remove from current position, insert at new position
+    new_order=()
+    for i in "${!current_order[@]}"; do
+      [[ $i -eq $idx ]] && continue
+      new_order+=("${current_order[$i]}")
+    done
+    final_order=("${new_order[@]:0:$new_idx}" "$task" "${new_order[@]:$new_idx}")
+
+    printf '%s\n' "${final_order[@]}" > "$col/order.txt"
+    echo "Order: '$task' is now position $(( new_idx + 1 )) of $len in $col"
     ;;
 
   show)
